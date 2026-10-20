@@ -1,21 +1,34 @@
 package main
 
 import (
-	"fmt"
+	"log"
+	"net/http"
+	"os"
+	"time"
 
-	"github.com/gin-gonic/gin"
+	"github.com/RobertoPatino1/url_shortener/server"
+	"github.com/RobertoPatino1/url_shortener/store"
 )
 
-func main() {
-	r := gin.Default()
-	r.GET("/", func(c *gin.Context) {
-		c.JSON(200, gin.H{
-			"message": "Hey Go URL Shortener !",
-		})
-	})
-
-	err := r.Run(":9808")
-	if err != nil {
-		panic(fmt.Sprintf("Failed to start the web server - Error: %v", err))
+func getenv(key, fallback string) string {
+	if v := os.Getenv(key); v != "" {
+		return v
 	}
+	return fallback
+}
+
+func main() {
+	addr := getenv("ADDR", ":8080")
+	baseURL := getenv("BASE_URL", "http://localhost:8080")
+
+	srv := server.New(store.NewMemoryStore(), baseURL)
+
+	httpSrv := &http.Server{
+		Addr:              addr,
+		Handler:           srv.Routes(),
+		ReadHeaderTimeout: 5 * time.Second,
+	}
+
+	log.Printf("listening on %s", addr)
+	log.Fatal(httpSrv.ListenAndServe())
 }
